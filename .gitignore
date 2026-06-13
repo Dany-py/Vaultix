@@ -1,0 +1,10 @@
+__pycache__/
+Include/
+Scripts/
+dist/
+build/
+Lib/
+*.db
+*.spec
+*.exe
+*.cfg
