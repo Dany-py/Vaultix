@@ -1,4 +1,4 @@
-# Folder Lock (secret-folder)
+# Secret Folder
 
 A simple cross-platform (Windows-focused) Python utility to lock and restore access to folders using OS ACLs and a small SQLite database to track locked paths with bcrypt-hashed passwords.
 
@@ -62,6 +62,14 @@ python main.py restore
 - Consider adding validation for folder paths and exception handling for subprocess calls.
 - Consider adding the ability to remove records from the database after restoring.
 
+## ⚠️ Windows Warning
+Windows may display a security warning when launching the program.
+Click "More info" and then "Run anyway."
+
+This is because the executable is not digitally signed.
+
 ## License
 
-This project is provided as-is without warranty. Use at your own risk.
+This project is licensed under the MIT License. See the `LICENSE` file for the full license text.
+
+This software is provided "as is", without warranty of any kind. Use at your own risk.
