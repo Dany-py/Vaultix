@@ -52,7 +52,12 @@ def restore_folder():
 
     subprocess.run(f'icacls "{secret_path}" /grant "{user}:(OI)(CI)(F)"',shell=True)
     print(colored("Folder access restored !", "yellow"))
-
+    
+    with sqlite3.connect("folder.db") as connection:
+        cursor = connection.cursor()
+        cursor.execute("UPDATE folders SET is_locked = 0 WHERE folder = ?", (secret_path,))
+        connection.commit()
+        
 
 if __name__ == "__main__":
     restore_folder()

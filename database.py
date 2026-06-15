@@ -12,11 +12,20 @@ def init_db():
     with sqlite3.connect("folder.db") as connection:
         cursor = connection.cursor()
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS folders (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                folder TEXT NOT NULL,
-                password TEXT
-            )
+                        CREATE TABLE IF NOT EXISTS folders (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            folder TEXT NOT NULL UNIQUE,
+                            password TEXT NOT NULL,
+                            is_locked INTEGER DEFAULT 1,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        );
+                       
+                        CREATE TRIGGER IF NOT EXISTS update_folders_time 
+                        AFTER UPDATE ON folders
+                        BEGIN
+                            UPDATE folders SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+                        END;
         """)
         connection.commit()
         print(colored('Database initialized successfully !', "green"))
