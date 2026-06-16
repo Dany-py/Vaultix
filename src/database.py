@@ -32,5 +32,15 @@ def init_db():
         connection.commit()
         print(colored('Database initialized successfully !', "green"))
 
+def load_data():
+    try:
+        with sqlite3.connect("folder.db") as connection:
+            cursor = connection.cursor()
+            cursor.execute("SELECT folder, is_locked, created_at, updated_at FROM folders")
+            return cursor.fetchall()
+    except sqlite3.Error as e:
+        print(f"Une erreur est survenue lors de la lecture de la base de données : {e}")
+        return None
+
 if __name__ == "__main__":
     init_db()

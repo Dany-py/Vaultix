@@ -9,38 +9,19 @@ from PySide6.QtGui import QIcon, QFont
 from PySide6.QtCore import Qt, QSize
 import os, sys
 from secret import lock_folder
+from verify import restore_folder
+from database import load_data
 
-class FolderTab(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.table = QTableWidget(3, 4)
-        self.row = self.table.rowCount()
-        self.col = self.table.columnCount()
-        self.tab()
-    
-    def tab(self):
-        layout = QVBoxLayout()
-        #self.table = QTableWidget(self.row, 4)
-        self.table.setHorizontalHeaderLabels(['Folder Name', 'Status', 'Date Locked', 'Actions'])
-
-        self.table.setItem(0, 0, QTableWidgetItem('Alice'))
-        self.table.setItem(0, 1, QTableWidgetItem('Développeur'))
-        
-        self.table.setItem(1, 0, QTableWidgetItem('Bob'))
-        self.table.setItem(1, 1, QTableWidgetItem('Designer'))
-        
-        self.table.setItem(2, 0, QTableWidgetItem('Charlie'))
-        self.table.setItem(2, 1, QTableWidgetItem('Manager'))
-
-        self.table.horizontalHeader().setStretchLastSection(True)
-
-        layout.addWidget(self.table)
-        self.setLayout(layout)
-    
-    def add_tab_item(self, data: list):
-        for i in range(len(data)):
-            for j in range(self.col):
-                self.table.setItem(i, j, QTableWidgetItem(data[i]))
+class AddFolderBtn(QPushButton):
+    def __init__(self, icon: QIcon, label: str, parent=None):
+        super().__init__(label, parent)
+        self.setCheckable(False)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFont(QFont("Segoe UI", 16))
+        self.setFixedHeight(42)
+        self.setIcon(icon)
+        self.setIconSize(QSize(24, 24))
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
 class Modal(QDialog):
     def __init__(self, lbl: str, btn_lbl: str, parent=None):
@@ -56,11 +37,11 @@ class Modal(QDialog):
         self.error_lbl.setStyleSheet("color: red;")
         self.error_lbl.setVisible(False)
 
-        if lbl == 'Add new folder' and btn_lbl == 'Lock this path':
+        if lbl == 'Lock new folder' and btn_lbl == 'Lock this path':
             self.cf_pwd_input = QLineEdit()
             self.cf_pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
 
-        if lbl == 'Add new folder' and btn_lbl == 'Lock this path':
+        if lbl == 'Lock new folder' and btn_lbl == 'Lock this path':
             self.path_input.setPlaceholderText('Paste or write the path you want to keep secret:')
             self.pwd_input.setPlaceholderText('Lock password')
             self.cf_pwd_input.setPlaceholderText('Confirm password')
@@ -78,7 +59,7 @@ class Modal(QDialog):
         layout.addWidget(self.path_input)
         layout.addWidget(self.pwd_input)
 
-        if lbl == 'Add new folder' and btn_lbl == 'Lock this path':
+        if lbl == 'Lock new folder' and btn_lbl == 'Lock this path':
             layout.addWidget(self.cf_pwd_input)
 
         layout.addWidget(button)
@@ -95,16 +76,45 @@ class Modal(QDialog):
         self.error_lbl.setText("")
         self.error_lbl.setVisible(False)
 
-class AddFolderBtn(QPushButton):
-    def __init__(self, icon: QIcon, label: str, parent=None):
-        super().__init__(label, parent)
-        self.setCheckable(False)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFont(QFont("Segoe UI", 16))
-        self.setFixedHeight(42)
-        self.setIcon(icon)
-        self.setIconSize(QSize(24, 24))
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+class FolderTab(QWidget):
+    def __init__(self, on_unlock=None):
+        super().__init__()
+        self.data = load_data()
+        self.on_unlock = on_unlock  # callback vers MainWindow.open_unlock_modal
+        self.table = QTableWidget(len(self.data), 5)
+        self.row = self.table.rowCount()
+        self.col = self.table.columnCount()
+        self.tab()
+    
+    def tab(self):
+        layout = QVBoxLayout()
+        self.table.setHorizontalHeaderLabels(['Folder', 'Status', 'Date Locked', 'Updated At', 'Actions'])
+
+        for i in range(self.row):
+            row_data = self.data[i]
+            for j in range(len(row_data)):
+                tab_data = row_data[j]
+                if isinstance(tab_data, str):
+                    self.table.setItem(i, j, QTableWidgetItem(tab_data))
+                elif isinstance(tab_data, int) and tab_data > 0:
+                    self.table.setItem(i, j, QTableWidgetItem('Locked'))
+
+            unlock_btn = QPushButton("Unlock")
+            unlock_btn.clicked.connect(lambda checked, row=i: self._on_unlock_click(row))
+            self.table.setCellWidget(i, 4, unlock_btn)
+
+        self.table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.table)
+        self.setLayout(layout)
+    
+    def _on_unlock_click(self, row: int):
+        if self.on_unlock:
+            self.on_unlock(row)
+
+    def add_tab_item(self, data: list):
+        for i in range(len(data)):
+            for j in range(len(data[i])):
+                self.table.setItem(i, j, QTableWidgetItem(str(data[i][j])))
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -112,7 +122,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Vaultix - Your Folder, Your Fortress")
         self.setMinimumSize(700, 700)
         self._build_()
-        self.unlock_dialogue = Modal('Restore folder', 'Unlock this path')
 
     @staticmethod
     def _font_(size: int = 13, weight=QFont.Weight.Normal, family: str = "Segoe UI") -> QFont:
@@ -121,33 +130,6 @@ class MainWindow(QMainWindow):
         font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
         return font
     
-    def open_lock_modal(self):
-        dialogue = Modal('Add new folder', 'Lock this path', self)
-        
-        while True:
-            if dialogue.exec() != QDialog.DialogCode.Accepted:
-                break
-
-            path_input = dialogue.get_input_text(dialogue.path_input)
-            pwd_input = dialogue.get_input_text(dialogue.pwd_input)
-            cf_pwd_input = dialogue.get_input_text(dialogue.cf_pwd_input)
-
-            success, message = lock_folder(
-                path=path_input,
-                pwd=pwd_input,
-                cf_pwd=cf_pwd_input
-            )
-
-            if success:
-                dialogue.clear_error()
-                break
-            else:
-                dialogue.show_error(message)
-
-
-    def open_unlock_modal(self):
-        self.unlock_dialogue.exec()
-
     def _build_(self):
         root = QWidget()
         root.setObjectName('root')
@@ -165,7 +147,7 @@ class MainWindow(QMainWindow):
         container.addWidget(title_lbl, alignment=Qt.AlignmentFlag.AlignTop)
         container.setContentsMargins(10, 10, 10, 10)
 
-        table = FolderTab()
+        table = FolderTab(on_unlock=self.open_unlock_modal)
         wrapper = QWidget()
         wrapper.setLayout(container)
 
@@ -187,6 +169,47 @@ class MainWindow(QMainWindow):
         presentation.setSpacing(0)
 
         root.setLayout(presentation)
+
+    def open_lock_modal(self):
+        dialogue = Modal('Lock new folder', 'Lock this path', self)
+        
+        while True:
+            if dialogue.exec() != QDialog.DialogCode.Accepted:
+                break
+
+            path_input = dialogue.get_input_text(dialogue.path_input)
+            pwd_input = dialogue.get_input_text(dialogue.pwd_input)
+            cf_pwd_input = dialogue.get_input_text(dialogue.cf_pwd_input)
+
+            success, message = lock_folder(
+                path=path_input,
+                pwd=pwd_input,
+                cf_pwd=cf_pwd_input
+            )
+
+            if success:
+                dialogue.clear_error()
+                break
+            else:
+                dialogue.show_error(message)
+
+    def open_unlock_modal(self, row: int = None):
+        dialogue = Modal('Unlock folder', 'Unlock this path', self)
+
+        while True:
+            if dialogue.exec() != QDialog.DialogCode.Accepted:
+                break
+        
+            path_input = dialogue.get_input_text(dialogue.path_input)
+            pwd_input  = dialogue.get_input_text(dialogue.pwd_input)
+
+            success, message = restore_folder(path=path_input, pwd=pwd_input)
+
+            if success:
+                dialogue.clear_error()
+                break
+            else:
+                dialogue.show_error(message)
 
 def gui():
     app = QApplication(sys.argv)
