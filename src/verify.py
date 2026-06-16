@@ -8,7 +8,7 @@ from termcolor import colored
 
 user = os.getlogin()
 
-def restore_folder():
+def restore_folder(**kwargs):
     """Restore access to a previously locked folder.
 
     Workflow:
@@ -25,7 +25,7 @@ def restore_folder():
       non-Windows platforms.
     """
 
-    secret_path = input('Paste or write the path you want to restore: ')
+    secret_path = kwargs if kwargs else input('Paste or write the path you want to restore: ')
 
     with sqlite3.connect("folder.db") as connection:
         cursor = connection.cursor()
@@ -40,7 +40,7 @@ def restore_folder():
     count = 3
 
     while count > 0 :
-        password = getpass.getpass("Enter your secret password: ")
+        password = kwargs if kwargs else getpass.getpass("Enter your secret password: ")
         if bcrypt.checkpw(password.encode('utf-8'), stored_password_hash):
             break
         print(colored("Passwords don't match. Please try again.\n", "red"))

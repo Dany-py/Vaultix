@@ -20,13 +20,15 @@ def init_db():
                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                         );
-                       
+        """)
+        cursor.execute("""
                         CREATE TRIGGER IF NOT EXISTS update_folders_time 
                         AFTER UPDATE ON folders
                         BEGIN
                             UPDATE folders SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
                         END;
-        """)
+                    """
+        )
         connection.commit()
         print(colored('Database initialized successfully !', "green"))
 
