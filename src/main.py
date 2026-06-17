@@ -1,35 +1,24 @@
 import argparse
-from secret import lock_folder
-from verify import restore_folder
-from database import init_db
+import sys
+from cli import cli
+from gui import gui
 
 def main():
-    """Command-line entry point.
-
-    Parses CLI arguments and dispatches commands:
-    - "init-db": create the SQLite database and required table
-    - "lock": prompt for a folder path and lock it (restrict access)
-    - "restore": prompt for a folder path and restore access
-
-    If no command is provided the database is initialized by default.
-    """
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="command", required=False)
-
-    subparsers.add_parser("init-db")
-    subparsers.add_parser("lock")
-    subparsers.add_parser("restore")
-
+    parser = argparse.ArgumentParser(description='Vaultix - Folder locking utility')
+    subparsers = parser.add_subparsers(dest="command", help='Available commands')
+    
+    subparsers.add_parser("init-db", help="Initialize the database")
+    subparsers.add_parser("lock", help="Lock a folder")
+    subparsers.add_parser("restore", help="Restore a locked folder")
+    
+    parser.add_argument('--gui', action='store_true', default=False, help='Force GUI mode (default)')
+    
     args = parser.parse_args()
 
-    if args.command == "init-db":
-        init_db()
-    elif args.command == "lock":
-        lock_folder()
-    elif args.command == "restore":
-        restore_folder()
+    if args.command:
+        cli()
     else:
-        init_db()
+        gui()
 
 if __name__ == "__main__":
     main()

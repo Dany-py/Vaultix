@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.0] - 2025-06-13
+## [1.0.1] - 2025-06-17
 ### Added
 - Password-protected folder (Windows)
 - Password hashing with bcrypt

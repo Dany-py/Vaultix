@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QIcon, QFont
 from PySide6.QtCore import Qt, QSize
-import os, sys, subprocess
+import os, sys, subprocess, sqlite3
 from secret import lock_folder
 from verify import restore_folder
 from database import load_data
@@ -90,66 +90,72 @@ class FolderTab(QWidget):
     def tab(self):
         layout = QVBoxLayout()
         self.table.setHorizontalHeaderLabels(['Folder', 'Status', 'Date Locked', 'Updated At', 'Actions'])
-
-        container1 = QWidget()
-        hbox1 = QHBoxLayout(container1)
-        hbox1.setContentsMargins(0, 0, 0, 0)
-        lock_icon_path = os.path.join(os.path.dirname(__file__), "assets", "lock.png")
-        lock_icon_lbl=QLabel()
-        if os.path.exists(lock_icon_path):
-            lock_icon_lbl.setPixmap(QIcon(lock_icon_path).pixmap(16, 16))
-        hbox1.addWidget(lock_icon_lbl, alignment=Qt.AlignmentFlag.AlignCenter)
-        
-        container2 = QWidget()
-        hbox2 = QHBoxLayout(container2)
-        hbox2.setContentsMargins(0, 0, 0, 0)
-        unlock_icon_path = os.path.join(os.path.dirname(__file__), "assets", "unlock.png")
-        unlock_icon_lbl=QLabel()
-        if os.path.exists(unlock_icon_path):
-            unlock_icon_lbl.setPixmap(QIcon(unlock_icon_path).pixmap(16, 16))
-        hbox2.addWidget(unlock_icon_lbl, alignment=Qt.AlignmentFlag.AlignCenter)
-
+        self.data_filling()
+        self.table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.table)
+        self.setLayout(layout)
+    
+    def data_filling(self):        
         for i in range(self.row):
             row_data = self.data[i]
+
+            container1 = QWidget()
+            hbox1 = QHBoxLayout(container1)
+            hbox1.setContentsMargins(0, 0, 0, 0)
+            lock_icon_path = os.path.join(os.path.dirname(__file__), "assets", "lock.png")
+            lock_icon_lbl=QLabel()
+            if os.path.exists(lock_icon_path):
+                lock_icon_lbl.setPixmap(QIcon(lock_icon_path).pixmap(16, 16))
+            hbox1.addWidget(lock_icon_lbl, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+            container2 = QWidget()
+            hbox2 = QHBoxLayout(container2)
+            hbox2.setContentsMargins(0, 0, 0, 0)
+            unlock_icon_path = os.path.join(os.path.dirname(__file__), "assets", "unlock.png")
+            unlock_icon_lbl=QLabel()
+            if os.path.exists(unlock_icon_path):
+                unlock_icon_lbl.setPixmap(QIcon(unlock_icon_path).pixmap(16, 16))
+            hbox2.addWidget(unlock_icon_lbl, alignment=Qt.AlignmentFlag.AlignCenter)
+
             for j in range(len(row_data)):
                 tab_data = row_data[j]
                 if isinstance(tab_data, str):
                     self.table.setItem(i, j, QTableWidgetItem(tab_data))
                 elif isinstance(tab_data, int) and tab_data > 0:
-                    self.table.setCellWidget(i, j, container1)
+                    self.table.setCellWidget(i, 1, container1)
                     unlock_btn = QPushButton("Unlock")
                     unlock_btn.clicked.connect(lambda checked, row=i: self._on_unlock_click(row))
                     self.table.setCellWidget(i, 4, unlock_btn)
 
                 elif isinstance(tab_data, int) and tab_data == 0:
-                    self.table.setCellWidget(i, j, container2)
+                    self.table.setCellWidget(i, 1, container2)
                     relock_btn = QPushButton("Lock")
                     relock_btn.clicked.connect(lambda checked, path=row_data[0]: self._on_relock_click(path))
                     self.table.setCellWidget(i, 4, relock_btn)
 
-        self.table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.table)
-        self.setLayout(layout)
-    
     def _on_unlock_click(self, row: int):
         if self.on_unlock:
             self.on_unlock(row)
             self.reload_tab()
 
-    def _on_relock_click(self, row: int):
+    def _on_relock_click(self, path: str):
         if self.on_relock:
-            self.on_relock(row)
+            self.on_relock(path)
             self.reload_tab()
 
     def reload_tab(self):
         self.data = load_data()
-        self.tab()
+        self.table.clearContents()
+        self.table.setRowCount(len(self.data))
+        self.row = self.table.rowCount()
+        self.data_filling()
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Vaultix - Your Folder, Your Fortress")
         self.setMinimumSize(700, 700)
+        self.table = FolderTab(on_unlock=self.open_unlock_modal, on_relock=self._relock_)
         self._build_()
 
     @staticmethod
@@ -159,9 +165,15 @@ class MainWindow(QMainWindow):
         font.setHintingPreference(QFont.HintingPreference.PreferFullHinting)
         return font
     
-    def _relock_(self, path: str):
+    def _relock_(self, path: str) -> tuple[bool, str]:
         user = os.getlogin()
-        subprocess.run(f'icacls "{path}" /inheritance:r /deny "{user}:(OI)(CI)(F)"',shell=True)
+        result =subprocess.run(f'icacls "{path}" /inheritance:r /deny "{user}:(OI)(CI)(F)"',shell=True)
+        if result.returncode != 0:
+            return False, "Failed to restore access !"
+        with sqlite3.connect("folder.db") as connection:
+            cursor = connection.cursor()
+            cursor.execute("UPDATE folders SET is_locked = 1 WHERE folder = ?", (path,))
+            connection.commit()
 
     def _build_(self):
         root = QWidget()
@@ -180,13 +192,12 @@ class MainWindow(QMainWindow):
         container.addWidget(title_lbl, alignment=Qt.AlignmentFlag.AlignTop)
         container.setContentsMargins(10, 10, 10, 10)
 
-        table = FolderTab(on_unlock=self.open_unlock_modal, on_relock=self._relock_)
         wrapper = QWidget()
         wrapper.setLayout(container)
 
         presentation = QVBoxLayout()
         presentation.addWidget(wrapper)
-        presentation.addWidget(table)
+        presentation.addWidget(self.table)
         
         btn_icon_path = os.path.join(os.path.dirname(__file__), "assets", "add.png")
         btn_icon= QIcon(btn_icon_path) if os.path.exists(btn_icon_path) else QIcon()
@@ -222,6 +233,7 @@ class MainWindow(QMainWindow):
 
             if success:
                 dialogue.clear_error()
+                self.table.reload_tab()
                 break
             else:
                 dialogue.show_error(message)
@@ -240,6 +252,7 @@ class MainWindow(QMainWindow):
 
             if success:
                 dialogue.clear_error()
+                self.table.reload_tab()
                 break
             else:
                 dialogue.show_error(message)

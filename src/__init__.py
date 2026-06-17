@@ -13,7 +13,7 @@ r"""
        ╚══════════════════════════════════════════╝
 """
 __title__     = 'Vaultix'
-__version__   = '1.0.0'
+__version__   = '1.0.1'
 __author__    = 'Dany-py'
 __license__   = 'MIT'
 __copyright__ = 'Copyright 2026 Dany-py'
