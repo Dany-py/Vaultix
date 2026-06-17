@@ -204,7 +204,7 @@ class MainWindow(QMainWindow):
         button = AddFolderBtn(btn_icon, 'Lock New Folder...')
         button.clicked.connect(self.open_lock_modal)
 
-        maker = QLabel('v1.0.1 Made with ❤️ by Dany-py')
+        maker = QLabel('v1.1.0 Made with ❤️ by Dany-py')
         maker.setFont(self._font_(size=10, weight=QFont.Weight.Normal))
 
         presentation.addWidget(button)
