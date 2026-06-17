@@ -3,7 +3,7 @@ from secret import lock_folder
 from verify import restore_folder
 from database import init_db
 
-def main():
+def cli():
     """Command-line entry point.
 
     Parses CLI arguments and dispatches commands:
@@ -14,8 +14,7 @@ def main():
     If no command is provided the database is initialized by default.
     """
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="command", required=False)
-
+    subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("init-db")
     subparsers.add_parser("lock")
     subparsers.add_parser("restore")
@@ -32,4 +31,4 @@ def main():
         init_db()
 
 if __name__ == "__main__":
-    main()
+    cli()
