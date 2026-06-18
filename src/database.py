@@ -40,7 +40,7 @@ def load_data():
             return cursor.fetchall()
     except sqlite3.Error as e:
         print(f"Une erreur est survenue lors de la lecture de la base de données : {e}")
-        return None
+        return []
 
 if __name__ == "__main__":
     init_db()

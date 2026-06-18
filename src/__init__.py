@@ -13,9 +13,15 @@ r"""
        ╚══════════════════════════════════════════╝
 """
 __title__     = 'Vaultix'
-__version__   = '1.0.1'
+__version__   = '1.1.0'
 __author__    = 'Dany-py'
 __license__   = 'MIT'
 __copyright__ = 'Copyright 2026 Dany-py'
 
 VERSION = __version__
+
+from src import cli
+from src import gui
+from src import database
+from src import secret
+from src import verify
