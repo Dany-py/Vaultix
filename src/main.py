@@ -2,6 +2,7 @@ import argparse
 import sys
 from cli import cli
 from gui import gui
+from database import init_db
 
 def main():
     parser = argparse.ArgumentParser(description='Vaultix - Folder locking utility')
@@ -16,8 +17,10 @@ def main():
     args = parser.parse_args()
 
     if args.command:
+        init_db()
         cli()
     else:
+        init_db()
         gui()
 
 if __name__ == "__main__":
